@@ -1,6 +1,30 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    static let historyWindowPositionDidChange = Notification.Name("LocalPaste.HistoryWindowPositionDidChange")
+}
+
+enum HistoryWindowPosition: String, CaseIterable, Identifiable {
+    case bottom
+    case top
+    case left
+    case right
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .bottom: return "menu.popup_position.bottom"
+        case .top: return "menu.popup_position.top"
+        case .left: return "menu.popup_position.left"
+        case .right: return "menu.popup_position.right"
+        }
+    }
+}
+
+private let historyWindowPositionStorageKey = "LocalPaste.HistoryWindowPosition"
+
 struct WindowAccessor: NSViewRepresentable {
     let onResolve: (NSWindow) -> Void
 
@@ -24,28 +48,79 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 @MainActor
-private var positionedWindowNumbers: Set<Int> = []
+private var appliedPositionByWindow: [Int: HistoryWindowPosition] = [:]
+
+func currentHistoryWindowPosition() -> HistoryWindowPosition {
+    let raw = UserDefaults.standard.string(forKey: historyWindowPositionStorageKey) ?? HistoryWindowPosition.bottom.rawValue
+    return HistoryWindowPosition(rawValue: raw) ?? .bottom
+}
+
+func setHistoryWindowPosition(_ position: HistoryWindowPosition) {
+    UserDefaults.standard.set(position.rawValue, forKey: historyWindowPositionStorageKey)
+    NotificationCenter.default.post(name: .historyWindowPositionDidChange, object: nil)
+}
 
 @MainActor
 func positionWindowAtScreenBottom(_ window: NSWindow) {
-    guard !positionedWindowNumbers.contains(window.windowNumber) else { return }
+    let preferredPosition = currentHistoryWindowPosition()
+    if appliedPositionByWindow[window.windowNumber] == preferredPosition {
+        return
+    }
+
     guard let screen = window.screen ?? NSScreen.main else { return }
 
-    positionedWindowNumbers.insert(window.windowNumber)
+    appliedPositionByWindow[window.windowNumber] = preferredPosition
     window.identifier = NSUserInterfaceItemIdentifier("historyWindow")
+    window.isMovable = false
+    window.isMovableByWindowBackground = false
+    window.styleMask.remove(.resizable)
 
     let visible = screen.visibleFrame
     var frame = window.frame
 
-    let targetWidth = min(max(1020, frame.width), visible.width - 24)
-    let targetHeight = min(max(320, frame.height), visible.height * 0.55)
+    let edgeInset: CGFloat = 8
+    let fullWidth = max(420, visible.width - edgeInset * 2)
+    let fullHeight = max(260, visible.height - edgeInset * 2)
 
-    frame.size.width = targetWidth
-    frame.size.height = targetHeight
-    frame.origin.x = visible.midX - targetWidth / 2
-    frame.origin.y = visible.minY + 16
+    let sideWidth: CGFloat = 224
+    let baseHeight = min(max(320, frame.height), visible.height * 0.55)
+
+    switch preferredPosition {
+    case .bottom:
+        frame.size.width = fullWidth
+        frame.size.height = baseHeight
+        frame.origin.x = visible.minX + edgeInset
+        frame.origin.y = visible.minY + edgeInset
+    case .top:
+        frame.size.width = fullWidth
+        frame.size.height = baseHeight
+        frame.origin.x = visible.minX + edgeInset
+        frame.origin.y = visible.maxY - frame.height - edgeInset
+    case .left:
+        frame.size.width = sideWidth
+        frame.size.height = fullHeight
+        frame.origin.x = visible.minX + edgeInset
+        frame.origin.y = visible.minY + edgeInset
+    case .right:
+        frame.size.width = sideWidth
+        frame.size.height = fullHeight
+        frame.origin.x = visible.maxX - frame.width - edgeInset
+        frame.origin.y = visible.minY + edgeInset
+    }
+
+    frame.origin.x = max(visible.minX + edgeInset, min(frame.origin.x, visible.maxX - frame.width - edgeInset))
+    frame.origin.y = max(visible.minY + edgeInset, min(frame.origin.y, visible.maxY - frame.height - edgeInset))
 
     window.setFrame(frame, display: true, animate: false)
+}
+
+@MainActor
+func repositionVisibleHistoryWindow() {
+    guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) else {
+        return
+    }
+    appliedPositionByWindow[window.windowNumber] = nil
+    positionWindowAtScreenBottom(window)
 }
 
 @MainActor

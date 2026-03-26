@@ -9,6 +9,7 @@ struct MenuBarHistoryView: View {
 
     @State private var draftConfiguration: HotkeyConfiguration
     @State private var selectedClickAction: RecordClickAction
+    @State private var selectedWindowPosition: HistoryWindowPosition
     @State private var isRecordingShortcut = false
     @State private var inputError: String?
     @State private var statusMessage: String?
@@ -19,6 +20,7 @@ struct MenuBarHistoryView: View {
         self.hotkeyManager = hotkeyManager
         _draftConfiguration = State(initialValue: hotkeyManager.configuration)
         _selectedClickAction = State(initialValue: store.clickAction)
+        _selectedWindowPosition = State(initialValue: currentHistoryWindowPosition())
     }
 
     var body: some View {
@@ -72,6 +74,22 @@ struct MenuBarHistoryView: View {
             .pickerStyle(.menu)
             .onChange(of: selectedClickAction) { value in
                 store.updateClickAction(value)
+            }
+
+            Text(L10n.tr("menu.popup_position"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Picker(L10n.tr("menu.popup_position"), selection: $selectedWindowPosition) {
+                ForEach(HistoryWindowPosition.allCases) { position in
+                    Text(L10n.tr(position.titleKey)).tag(position)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .onChange(of: selectedWindowPosition) { value in
+                setHistoryWindowPosition(value)
+                repositionVisibleHistoryWindow()
             }
 
             if let inputError {
@@ -158,6 +176,7 @@ struct MenuBarHistoryView: View {
     private func syncFromManager() {
         draftConfiguration = hotkeyManager.configuration
         selectedClickAction = store.clickAction
+        selectedWindowPosition = currentHistoryWindowPosition()
         inputError = nil
         statusMessage = nil
     }

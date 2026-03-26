@@ -46,3 +46,8 @@
 "menu.language.system" = "跟随系统";
 "menu.language.zh" = "简体中文";
 "menu.language.en" = "English";
+"menu.popup_position" = "弹窗位置";
+"menu.popup_position.bottom" = "底部";
+"menu.popup_position.top" = "顶部";
+"menu.popup_position.left" = "左侧";
+"menu.popup_position.right" = "右侧";

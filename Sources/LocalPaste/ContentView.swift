@@ -7,6 +7,7 @@ struct ContentView: View {
     @ObservedObject private var languageManager = LanguageManager.shared
     @Environment(\.openWindow) private var openWindow
     @State private var query = ""
+    @State private var currentWindowPosition: HistoryWindowPosition = currentHistoryWindowPosition()
 
     private var filteredItems: [ClipboardItem] {
         if query.isEmpty {
@@ -18,6 +19,14 @@ struct ContentView: View {
         }
     }
 
+    private var useVerticalCardsLayout: Bool {
+        currentWindowPosition == .left || currentWindowPosition == .right
+    }
+
+    private var contentWidth: CGFloat {
+        useVerticalCardsLayout ? 224 : 1240
+    }
+
     var body: some View {
         ZStack {
             backgroundLayer
@@ -26,19 +35,29 @@ struct ContentView: View {
                 topBar
                 cardsBoard
             }
-            .padding(16)
+            .padding(useVerticalCardsLayout ? 10 : 16)
         }
-        .frame(minWidth: 1080, idealWidth: 1240, minHeight: 340, idealHeight: 380)
+        .frame(
+            minWidth: useVerticalCardsLayout ? 224 : 1080,
+            idealWidth: contentWidth,
+            maxWidth: useVerticalCardsLayout ? 224 : .infinity,
+            minHeight: 340,
+            idealHeight: 380
+        )
         .background(WindowAccessor { window in
             positionWindowAtScreenBottom(window)
         })
         .onAppear {
+            currentWindowPosition = currentHistoryWindowPosition()
             hotkeyManager.onTriggered = { [openWindow] in
                 Task { @MainActor in
                     store.capturePotentialPasteTarget()
                     toggleHistoryWindow(openWindow: openWindow)
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .historyWindowPositionDidChange)) { _ in
+            currentWindowPosition = currentHistoryWindowPosition()
         }
     }
 
@@ -67,36 +86,71 @@ struct ContentView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 10) {
-            Text("LocalPaste")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+        Group {
+            if useVerticalCardsLayout {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("LocalPaste")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Spacer(minLength: 4)
+                        Text(L10n.tr("content.items_count", store.items.count))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
 
-            categoryChip(text: L10n.tr("content.category_all"), active: true)
-            categoryChip(text: L10n.tr("content.category_mix"), active: false)
+                    searchField
 
-            searchField
+                    HStack(spacing: 6) {
+                        actionButton("square.and.arrow.down", help: L10n.tr("content.help.import_txt")) {
+                            store.importHistoryFromTXT()
+                        }
 
-            Spacer(minLength: 6)
+                        actionButton("square.and.arrow.up", help: L10n.tr("content.help.export_txt")) {
+                            store.exportHistoryAsTXT()
+                        }
+                        .disabled(store.items.isEmpty)
 
-            Text(L10n.tr("content.items_count", store.items.count))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+                        actionButton("trash", help: L10n.tr("content.help.clear")) {
+                            store.clearAll()
+                        }
+                        .disabled(store.items.isEmpty)
 
-            actionButton("square.and.arrow.down", help: L10n.tr("content.help.import_txt")) {
-                store.importHistoryFromTXT()
+                        Spacer(minLength: 0)
+                    }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Text("LocalPaste")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+
+                    categoryChip(text: L10n.tr("content.category_all"), active: true)
+                    categoryChip(text: L10n.tr("content.category_mix"), active: false)
+
+                    searchField
+
+                    Spacer(minLength: 6)
+
+                    Text(L10n.tr("content.items_count", store.items.count))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    actionButton("square.and.arrow.down", help: L10n.tr("content.help.import_txt")) {
+                        store.importHistoryFromTXT()
+                    }
+
+                    actionButton("square.and.arrow.up", help: L10n.tr("content.help.export_txt")) {
+                        store.exportHistoryAsTXT()
+                    }
+                    .disabled(store.items.isEmpty)
+
+                    actionButton("trash", help: L10n.tr("content.help.clear")) {
+                        store.clearAll()
+                    }
+                    .disabled(store.items.isEmpty)
+                }
+                .frame(height: 30)
             }
-
-            actionButton("square.and.arrow.up", help: L10n.tr("content.help.export_txt")) {
-                store.exportHistoryAsTXT()
-            }
-            .disabled(store.items.isEmpty)
-
-            actionButton("trash", help: L10n.tr("content.help.clear")) {
-                store.clearAll()
-            }
-            .disabled(store.items.isEmpty)
         }
-        .frame(height: 30)
     }
 
     private var searchField: some View {
@@ -111,36 +165,57 @@ struct ContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .frame(maxWidth: 220)
+        .frame(maxWidth: useVerticalCardsLayout ? .infinity : 220)
         .background(.thinMaterial, in: Capsule())
     }
 
     private var cardsBoard: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 10) {
-                Circle().fill(Color(red: 0.95, green: 0.34, blue: 0.38)).frame(width: 8, height: 8)
-                Circle().fill(Color(red: 0.17, green: 0.67, blue: 0.93)).frame(width: 8, height: 8)
-                Circle().fill(Color(red: 0.97, green: 0.75, blue: 0.12)).frame(width: 8, height: 8)
-                Spacer()
+            if !useVerticalCardsLayout {
+                VStack(spacing: 10) {
+                    Circle().fill(Color(red: 0.95, green: 0.34, blue: 0.38)).frame(width: 8, height: 8)
+                    Circle().fill(Color(red: 0.17, green: 0.67, blue: 0.93)).frame(width: 8, height: 8)
+                    Circle().fill(Color(red: 0.97, green: 0.75, blue: 0.12)).frame(width: 8, height: 8)
+                    Spacer()
+                }
+                .frame(width: 26)
+                .padding(.top, 14)
             }
-            .frame(width: 26)
-            .padding(.top, 14)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 14) {
-                    ForEach(filteredItems) { item in
-                        ClipboardCard(item: item, previewImage: store.image(for: item)) {
-                            store.performPrimaryAction(for: item)
-                            closeHistoryWindow()
-                        } onDelete: {
-                            store.delete(item)
+            Group {
+                if useVerticalCardsLayout {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(alignment: .leading, spacing: 14) {
+                            ForEach(filteredItems) { item in
+                                ClipboardCard(item: item, previewImage: store.image(for: item), isCompact: useVerticalCardsLayout) {
+                                    store.performPrimaryAction(for: item)
+                                    closeHistoryWindow()
+                                } onDelete: {
+                                    store.delete(item)
+                                }
+                            }
                         }
+                        .padding(.vertical, 12)
+                        .padding(.trailing, 12)
+                    }
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(filteredItems) { item in
+                                ClipboardCard(item: item, previewImage: store.image(for: item), isCompact: useVerticalCardsLayout) {
+                                    store.performPrimaryAction(for: item)
+                                    closeHistoryWindow()
+                                } onDelete: {
+                                    store.delete(item)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.trailing, 12)
                     }
                 }
-                .padding(.vertical, 12)
-                .padding(.trailing, 12)
             }
-            .overlay {
+            .overlay(alignment: .center) {
                 if filteredItems.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "doc.on.clipboard")
@@ -154,12 +229,12 @@ struct ContentView: View {
             }
         }
         .padding(.vertical, 6)
-        .padding(.leading, 8)
+        .padding(.leading, useVerticalCardsLayout ? 6 : 8)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
+        .overlay(alignment: .center) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.46), lineWidth: 1)
-        )
+        }
     }
 
     private func categoryChip(text: String, active: Bool) -> some View {
@@ -224,8 +299,17 @@ struct ContentView: View {
 private struct ClipboardCard: View {
     let item: ClipboardItem
     let previewImage: NSImage?
+    let isCompact: Bool
     let onCopy: () -> Void
     let onDelete: () -> Void
+
+    private var cardWidth: CGFloat {
+        isCompact ? 180 : 248
+    }
+
+    private var imagePreviewWidth: CGFloat {
+        isCompact ? 156 : 224
+    }
 
     private var previewText: String {
         let normalized = (item.text ?? "")
@@ -268,12 +352,12 @@ private struct ClipboardCard: View {
                         Image(nsImage: previewImage)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 224, height: 118)
+                            .frame(width: imagePreviewWidth, height: 118)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     } else {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Color.black.opacity(0.07))
-                            .frame(width: 224, height: 118)
+                            .frame(width: imagePreviewWidth, height: 118)
                             .overlay {
                                 Image(systemName: "photo")
                                     .font(.title3)
@@ -298,7 +382,7 @@ private struct ClipboardCard: View {
                 }
             }
             .padding(12)
-            .frame(width: 248, height: 188, alignment: .topLeading)
+            .frame(width: cardWidth, height: 188, alignment: .topLeading)
             .background(Color.white.opacity(0.92))
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

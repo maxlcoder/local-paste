@@ -46,3 +46,8 @@
 "menu.language.system" = "Follow System";
 "menu.language.zh" = "Simplified Chinese";
 "menu.language.en" = "English";
+"menu.popup_position" = "Popup Position";
+"menu.popup_position.bottom" = "Bottom";
+"menu.popup_position.top" = "Top";
+"menu.popup_position.left" = "Left";
+"menu.popup_position.right" = "Right";
