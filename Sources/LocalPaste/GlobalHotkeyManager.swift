@@ -102,10 +102,12 @@ final class GlobalHotkeyManager: ObservableObject {
     private let hotkeySignature: OSType = 0x4C505354 // LPST
     private let hotkeyID: UInt32 = 1
 
-    init() {
+    init(registerHotkey: Bool = true) {
         self.configuration = Self.loadConfiguration(storageKey: storageKey) ?? .default
-        installEventHandlerIfNeeded()
-        registerCurrentHotkey()
+        if registerHotkey {
+            installEventHandlerIfNeeded()
+            registerCurrentHotkey()
+        }
     }
 
     func update(configuration: HotkeyConfiguration) {
@@ -116,6 +118,17 @@ final class GlobalHotkeyManager: ObservableObject {
 
     func setTriggerHandlingPaused(_ paused: Bool) {
         isTriggerHandlingPaused = paused
+    }
+
+    func suspendRegistration() {
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+    }
+
+    func resumeRegistration() {
+        registerCurrentHotkey()
     }
 
     func resetToDefault() {
@@ -210,3 +223,14 @@ final class GlobalHotkeyManager: ObservableObject {
         return try? JSONDecoder().decode(HotkeyConfiguration.self, from: data)
     }
 }
+
+#if DEBUG
+@MainActor
+extension GlobalHotkeyManager {
+    static func preview(configuration: HotkeyConfiguration = .default) -> GlobalHotkeyManager {
+        let manager = GlobalHotkeyManager(registerHotkey: false)
+        manager.configuration = configuration
+        return manager
+    }
+}
+#endif

@@ -41,8 +41,29 @@ struct WindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = nsView.window {
+                context.coordinator.attach(to: window)
                 onResolve(window)
             }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSWindowDelegate {
+        private weak var observedWindow: NSWindow?
+
+        func attach(to window: NSWindow) {
+            guard observedWindow !== window else { return }
+            observedWindow?.delegate = nil
+            observedWindow = window
+            window.delegate = self
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            hideAppFromDock()
         }
     }
 }
@@ -74,6 +95,7 @@ func positionWindowAtScreenBottom(_ window: NSWindow) {
     window.isMovable = false
     window.isMovableByWindowBackground = false
     window.styleMask.remove(.resizable)
+    configureHistoryWindowAppearance(window)
 
     let visible = screen.visibleFrame
     var frame = window.frame
@@ -115,6 +137,20 @@ func positionWindowAtScreenBottom(_ window: NSWindow) {
 }
 
 @MainActor
+private func configureHistoryWindowAppearance(_ window: NSWindow) {
+    window.styleMask.insert(.fullSizeContentView)
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.title = ""
+    if #available(macOS 11.0, *) {
+        window.toolbarStyle = .unifiedCompact
+    }
+    if #available(macOS 15.0, *) {
+        window.titlebarSeparatorStyle = .none
+    }
+}
+
+@MainActor
 func repositionVisibleHistoryWindow() {
     guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) else {
         return
@@ -124,7 +160,16 @@ func repositionVisibleHistoryWindow() {
 }
 
 @MainActor
+func hideHistoryWindow() {
+    if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) {
+        window.orderOut(nil)
+    }
+    hideAppFromDock()
+}
+
+@MainActor
 func activateHistoryWindow() {
+    hideAppFromDock()
     NSApp.activate(ignoringOtherApps: true)
 
     if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) {
@@ -137,4 +182,9 @@ func activateHistoryWindow() {
         firstWindow.makeKeyAndOrderFront(nil)
         firstWindow.orderFrontRegardless()
     }
+}
+
+@MainActor
+func hideAppFromDock() {
+    NSApp.setActivationPolicy(.accessory)
 }

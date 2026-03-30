@@ -27,6 +27,17 @@ struct ContentView: View {
         useVerticalCardsLayout ? 224 : 1240
     }
 
+    private var outerPadding: EdgeInsets {
+        if useVerticalCardsLayout {
+            return EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10)
+        }
+        return EdgeInsets(top: 6, leading: 12, bottom: 14, trailing: 12)
+    }
+
+    private var topBarLeadingInset: CGFloat {
+        useVerticalCardsLayout ? 74 : 88
+    }
+
     var body: some View {
         ZStack {
             backgroundLayer
@@ -35,7 +46,7 @@ struct ContentView: View {
                 topBar
                 cardsBoard
             }
-            .padding(useVerticalCardsLayout ? 10 : 16)
+            .padding(outerPadding)
         }
         .frame(
             minWidth: useVerticalCardsLayout ? 224 : 1080,
@@ -151,6 +162,8 @@ struct ContentView: View {
                 .frame(height: 30)
             }
         }
+        .padding(.leading, topBarLeadingInset)
+        .padding(.trailing, useVerticalCardsLayout ? 0 : 2)
     }
 
     private var searchField: some View {
@@ -170,18 +183,7 @@ struct ContentView: View {
     }
 
     private var cardsBoard: some View {
-        HStack(spacing: 0) {
-            if !useVerticalCardsLayout {
-                VStack(spacing: 10) {
-                    Circle().fill(Color(red: 0.95, green: 0.34, blue: 0.38)).frame(width: 8, height: 8)
-                    Circle().fill(Color(red: 0.17, green: 0.67, blue: 0.93)).frame(width: 8, height: 8)
-                    Circle().fill(Color(red: 0.97, green: 0.75, blue: 0.12)).frame(width: 8, height: 8)
-                    Spacer()
-                }
-                .frame(width: 26)
-                .padding(.top, 14)
-            }
-
+        Group {
             Group {
                 if useVerticalCardsLayout {
                     ScrollView(.vertical, showsIndicators: false) {
@@ -229,7 +231,7 @@ struct ContentView: View {
             }
         }
         .padding(.vertical, 6)
-        .padding(.leading, useVerticalCardsLayout ? 6 : 8)
+        .padding(.horizontal, 8)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(alignment: .center) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -275,7 +277,7 @@ struct ContentView: View {
         }
 
         if isHistoryWindowFrontmost(historyWindow) {
-            historyWindow.orderOut(nil)
+            hideHistoryWindow()
         } else {
             NSApp.activate(ignoringOtherApps: true)
             historyWindow.makeKeyAndOrderFront(nil)
@@ -285,9 +287,7 @@ struct ContentView: View {
 
     @MainActor
     private func closeHistoryWindow() {
-        if let historyWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) {
-            historyWindow.orderOut(nil)
-        }
+        hideHistoryWindow()
     }
 
     @MainActor
@@ -405,3 +405,58 @@ private struct ClipboardCard: View {
         return formatter.localizedString(for: item.copiedAt, relativeTo: Date())
     }
 }
+
+#if DEBUG
+@MainActor
+private enum PreviewSeed {
+    static let defaultItems: [ClipboardItem] = [
+        ClipboardItem(
+            text: "2026-03-16 ~ 2026-03-20 刘仁麟周报",
+            copiedAt: Date().addingTimeInterval(-90)
+        ),
+        ClipboardItem(
+            text: "2. 惠农直通车推送 IRS 数据中空格问题处理",
+            copiedAt: Date().addingTimeInterval(-7200)
+        ),
+        ClipboardItem(
+            imageFileName: "preview-image.png",
+            imageWidth: 1645,
+            imageHeight: 471,
+            imageHash: "preview-image-hash",
+            copiedAt: Date().addingTimeInterval(-172800)
+        ),
+        ClipboardItem(
+            text: "Translated Report (Full Report Below)\n\nProcess: LocalPaste\nPath: /Users/USER/*/LocalPaste.app/Contents/MacOS/LocalPaste",
+            copiedAt: Date().addingTimeInterval(-320000)
+        )
+    ]
+
+    static let previewHotkey = HotkeyConfiguration(
+        keyCode: 9,
+        command: true,
+        option: false,
+        control: false,
+        shift: true
+    )
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            ContentView(
+                store: .preview(items: PreviewSeed.defaultItems, clickAction: .copyOnly),
+                hotkeyManager: .preview(configuration: PreviewSeed.previewHotkey)
+            )
+            .previewDisplayName("Horizontal")
+            .frame(width: 1180, height: 380)
+
+            ContentView(
+                store: .preview(items: PreviewSeed.defaultItems, clickAction: .copyAndAutoPaste),
+                hotkeyManager: .preview(configuration: PreviewSeed.previewHotkey)
+            )
+            .previewDisplayName("Vertical")
+            .frame(width: 224, height: 700)
+        }
+    }
+}
+#endif

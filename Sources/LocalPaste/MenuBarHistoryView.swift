@@ -160,7 +160,7 @@ struct MenuBarHistoryView: View {
         if historyWindow.isVisible {
             let isFrontmost = NSApp.isActive && (historyWindow.isKeyWindow || historyWindow.isMainWindow)
             if isFrontmost {
-                historyWindow.orderOut(nil)
+                hideHistoryWindow()
             } else {
                 NSApp.activate(ignoringOtherApps: true)
                 historyWindow.makeKeyAndOrderFront(nil)
@@ -191,6 +191,7 @@ struct MenuBarHistoryView: View {
         statusMessage = nil
         isRecordingShortcut = true
         hotkeyManager.setTriggerHandlingPaused(true)
+        hotkeyManager.suspendRegistration()
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == 53 { // Esc
@@ -231,9 +232,31 @@ struct MenuBarHistoryView: View {
     private func stopRecordingShortcut() {
         isRecordingShortcut = false
         hotkeyManager.setTriggerHandlingPaused(false)
+        hotkeyManager.resumeRegistration()
         if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)
             self.keyMonitor = nil
         }
     }
 }
+
+#if DEBUG
+struct MenuBarHistoryView_Previews: PreviewProvider {
+    static var previews: some View {
+        MenuBarHistoryView(
+            store: .preview(
+                items: [
+                    ClipboardItem(text: "周报草稿"),
+                    ClipboardItem(text: "待处理事项：修复快捷键录制"),
+                    ClipboardItem(text: "用户反馈：顶部工具栏需要更紧凑")
+                ],
+                clickAction: .copyAndAutoPaste
+            ),
+            hotkeyManager: .preview()
+        )
+        .padding()
+        .frame(width: 320)
+        .previewDisplayName("Menu Bar")
+    }
+}
+#endif

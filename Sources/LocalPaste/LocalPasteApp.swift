@@ -1,16 +1,16 @@
 import AppKit
 import SwiftUI
 
-@main
-struct LocalPasteApp: App {
+public struct LocalPasteRootApp: App {
     @StateObject private var store = ClipboardStore()
     @StateObject private var hotkeyManager = GlobalHotkeyManager()
 
-    init() {
+    public init() {
         enforceSingleInstanceLaunch()
+        NSApplication.shared.setActivationPolicy(.accessory)
     }
 
-    var body: some Scene {
+    public var body: some Scene {
         WindowGroup("LocalPaste", id: "history") {
             ContentView(store: store, hotkeyManager: hotkeyManager)
         }

@@ -36,13 +36,15 @@ final class ClipboardStore: ObservableObject {
     private let exportSeparator = "\n\n-----LOCALPASTE-ITEM-----\n\n"
     private let clickActionStorageKey = "LocalPaste.RecordClickAction"
 
-    init() {
+    init(shouldStartMonitoring: Bool = true) {
         self.lastChangeCount = pasteboard.changeCount
         self.clickAction = Self.loadClickAction(key: clickActionStorageKey) ?? .copyOnly
-        loadHistory()
-        captureCurrentFrontmostAppIfNeeded()
-        captureCurrentPasteboardIfNeeded()
-        startMonitoring()
+        if shouldStartMonitoring {
+            loadHistory()
+            captureCurrentFrontmostAppIfNeeded()
+            captureCurrentPasteboardIfNeeded()
+            startMonitoring()
+        }
     }
 
     func startMonitoring() {
@@ -479,6 +481,21 @@ final class ClipboardStore: ObservableObject {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
+
+#if DEBUG
+@MainActor
+extension ClipboardStore {
+    static func preview(
+        items: [ClipboardItem] = [],
+        clickAction: RecordClickAction = .copyOnly
+    ) -> ClipboardStore {
+        let store = ClipboardStore(shouldStartMonitoring: false)
+        store.items = items
+        store.clickAction = clickAction
+        return store
+    }
+}
+#endif
 
 private extension NSImage {
     var pngData: Data? {

@@ -9,14 +9,21 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
+        .library(name: "LocalPasteUI", targets: ["LocalPasteUI"]),
         .executable(name: "LocalPaste", targets: ["LocalPaste"])
     ],
     targets: [
-        .executableTarget(
-            name: "LocalPaste",
+        .target(
+            name: "LocalPasteUI",
+            path: "Sources/LocalPaste",
             resources: [
                 .process("Resources")
             ]
+        ),
+        .executableTarget(
+            name: "LocalPaste",
+            dependencies: ["LocalPasteUI"],
+            path: "Sources/LocalPasteExecutable"
         )
     ]
 )
