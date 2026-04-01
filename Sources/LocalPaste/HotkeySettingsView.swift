@@ -166,3 +166,13 @@ struct HotkeySettingsView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Hotkey Settings") {
+    HotkeySettingsView(
+        hotkeyManager: .preview(configuration: PreviewFixtures.hotkeyConfiguration),
+        store: .preview(items: PreviewFixtures.menuItems, clickAction: .copyAndAutoPaste)
+    )
+    .frame(width: 460, height: 410)
+}
+#endif

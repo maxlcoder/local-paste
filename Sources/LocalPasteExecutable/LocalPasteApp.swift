@@ -1,19 +1,27 @@
 import AppKit
+import LocalPasteUI
 import SwiftUI
 
-public struct LocalPasteRootApp: App {
+@main
+struct LocalPasteApp: App {
+    private let historyWindowDefaultWidth: CGFloat = 1180
+    private let historyWindowDefaultHeight: CGFloat = 280
+
     @StateObject private var store = ClipboardStore()
     @StateObject private var hotkeyManager = GlobalHotkeyManager()
 
-    public init() {
+    init() {
         enforceSingleInstanceLaunch()
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 
-    public var body: some Scene {
+    var body: some Scene {
         WindowGroup("LocalPaste", id: "history") {
             ContentView(store: store, hotkeyManager: hotkeyManager)
         }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: historyWindowDefaultWidth, height: historyWindowDefaultHeight)
+        .windowResizability(.contentSize)
 
         MenuBarExtra("LocalPaste", systemImage: "clipboard") {
             MenuBarHistoryView(store: store, hotkeyManager: hotkeyManager)

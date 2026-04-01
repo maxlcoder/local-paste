@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-struct MenuBarHistoryView: View {
+public struct MenuBarHistoryView: View {
     @ObservedObject var store: ClipboardStore
     @ObservedObject var hotkeyManager: GlobalHotkeyManager
     @ObservedObject private var languageManager = LanguageManager.shared
@@ -15,7 +15,7 @@ struct MenuBarHistoryView: View {
     @State private var statusMessage: String?
     @State private var keyMonitor: Any?
 
-    init(store: ClipboardStore, hotkeyManager: GlobalHotkeyManager) {
+    public init(store: ClipboardStore, hotkeyManager: GlobalHotkeyManager) {
         self.store = store
         self.hotkeyManager = hotkeyManager
         _draftConfiguration = State(initialValue: hotkeyManager.configuration)
@@ -23,7 +23,7 @@ struct MenuBarHistoryView: View {
         _selectedWindowPosition = State(initialValue: currentHistoryWindowPosition())
     }
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Menu(L10n.tr("menu.language")) {
                 ForEach(AppLanguage.allCases) { language in
@@ -241,22 +241,15 @@ struct MenuBarHistoryView: View {
 }
 
 #if DEBUG
-struct MenuBarHistoryView_Previews: PreviewProvider {
-    static var previews: some View {
-        MenuBarHistoryView(
-            store: .preview(
-                items: [
-                    ClipboardItem(text: "周报草稿"),
-                    ClipboardItem(text: "待处理事项：修复快捷键录制"),
-                    ClipboardItem(text: "用户反馈：顶部工具栏需要更紧凑")
-                ],
-                clickAction: .copyAndAutoPaste
-            ),
-            hotkeyManager: .preview()
-        )
-        .padding()
-        .frame(width: 320)
-        .previewDisplayName("Menu Bar")
-    }
+#Preview("Menu Bar Settings") {
+    MenuBarHistoryView(
+        store: .preview(
+            items: PreviewFixtures.menuItems,
+            clickAction: .copyAndAutoPaste
+        ),
+        hotkeyManager: .preview(configuration: PreviewFixtures.hotkeyConfiguration)
+    )
+    .padding()
+    .frame(width: 320)
 }
 #endif

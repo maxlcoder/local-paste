@@ -1,3 +1,0 @@
-import LocalPasteUI
-
-LocalPasteRootApp.main()

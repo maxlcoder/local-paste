@@ -105,17 +105,17 @@ func positionWindowAtScreenBottom(_ window: NSWindow) {
     let fullHeight = max(260, visible.height - edgeInset * 2)
 
     let sideWidth: CGFloat = 224
-    let baseHeight = min(max(320, frame.height), visible.height * 0.55)
+    let horizontalHeight: CGFloat = 232
 
     switch preferredPosition {
     case .bottom:
         frame.size.width = fullWidth
-        frame.size.height = baseHeight
+        frame.size.height = min(horizontalHeight, visible.height - edgeInset * 2)
         frame.origin.x = visible.minX + edgeInset
         frame.origin.y = visible.minY + edgeInset
     case .top:
         frame.size.width = fullWidth
-        frame.size.height = baseHeight
+        frame.size.height = min(horizontalHeight, visible.height - edgeInset * 2)
         frame.origin.x = visible.minX + edgeInset
         frame.origin.y = visible.maxY - frame.height - edgeInset
     case .left:
@@ -142,9 +142,10 @@ private func configureHistoryWindowAppearance(_ window: NSWindow) {
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
     window.title = ""
-    if #available(macOS 11.0, *) {
-        window.toolbarStyle = .unifiedCompact
-    }
+    window.toolbar = nil
+    window.standardWindowButton(.closeButton)?.isHidden = true
+    window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+    window.standardWindowButton(.zoomButton)?.isHidden = true
     if #available(macOS 15.0, *) {
         window.titlebarSeparatorStyle = .none
     }

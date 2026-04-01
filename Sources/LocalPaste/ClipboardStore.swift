@@ -21,7 +21,7 @@ enum RecordClickAction: String, Codable, CaseIterable, Identifiable {
 }
 
 @MainActor
-final class ClipboardStore: ObservableObject {
+public final class ClipboardStore: ObservableObject {
     @Published private(set) var items: [ClipboardItem] = []
     @Published private(set) var clickAction: RecordClickAction
 
@@ -36,7 +36,7 @@ final class ClipboardStore: ObservableObject {
     private let exportSeparator = "\n\n-----LOCALPASTE-ITEM-----\n\n"
     private let clickActionStorageKey = "LocalPaste.RecordClickAction"
 
-    init(shouldStartMonitoring: Bool = true) {
+    public init(shouldStartMonitoring: Bool = true) {
         self.lastChangeCount = pasteboard.changeCount
         self.clickAction = Self.loadClickAction(key: clickActionStorageKey) ?? .copyOnly
         if shouldStartMonitoring {

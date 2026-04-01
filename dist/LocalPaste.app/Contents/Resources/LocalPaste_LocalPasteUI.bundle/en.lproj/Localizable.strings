@@ -1,0 +1,53 @@
+"action.copy" = "Copy";
+"action.delete" = "Delete";
+"action.clear" = "Clear";
+"action.copy_only" = "Copy Only";
+"action.copy_to_app" = "Copy to App";
+
+"content.category_all" = "All";
+"content.category_mix" = "Image+Text";
+"content.search_placeholder" = "Search text or image";
+"content.items_count" = "%d items";
+"content.empty_history" = "No clipboard history";
+"content.no_search_result" = "No matching results";
+"content.help.import_txt" = "Import TXT";
+"content.help.export_txt" = "Export TXT";
+"content.help.clear" = "Clear";
+
+"card.type_text" = "Text";
+"card.type_image" = "Image";
+"card.empty_text" = "(Empty Text)";
+"card.image_size" = "Image size: %@";
+"card.characters" = "%d characters";
+
+"menu.hotkey" = "Shortcut";
+"menu.hotkey.recording" = "Press shortcut...";
+"menu.hotkey.record_hint" = "Click the shortcut box to record, press Esc to cancel";
+"menu.copy_rule" = "Copy Rule";
+"menu.open_history" = "Open History Window";
+"menu.import_txt_history" = "Import TXT History";
+"menu.export_txt_history" = "Export TXT History";
+"menu.clear_history" = "Clear History";
+"menu.quit" = "Quit LocalPaste";
+"menu.error.require_modifier" = "Please include at least one modifier key";
+"menu.error.only_alnum" = "Only letters and numbers are supported";
+"menu.status.hotkey_reapplied" = "Shortcut unchanged, reapplied";
+"menu.status.hotkey_updated" = "Shortcut updated";
+
+"store.panel.export_title" = "Export Clipboard History";
+"store.panel.import_title" = "Import Clipboard History";
+
+"clipboard.image_search_label" = "image %@";
+"clipboard.image_menu_prefix" = "[Image] %@";
+"clipboard.unknown_size" = "Unknown size";
+
+"hotkey.error.register_failed" = "Failed to register shortcut, please choose another one";
+"menu.language" = "Language";
+"menu.language.system" = "Follow System";
+"menu.language.zh" = "Simplified Chinese";
+"menu.language.en" = "English";
+"menu.popup_position" = "Popup Position";
+"menu.popup_position.bottom" = "Bottom";
+"menu.popup_position.top" = "Top";
+"menu.popup_position.left" = "Left";
+"menu.popup_position.right" = "Right";

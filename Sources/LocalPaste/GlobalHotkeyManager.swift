@@ -49,7 +49,7 @@ struct HotkeyConfiguration: Codable, Equatable {
 }
 
 @MainActor
-final class GlobalHotkeyManager: ObservableObject {
+public final class GlobalHotkeyManager: ObservableObject {
     @Published private(set) var configuration: HotkeyConfiguration
     @Published private(set) var registrationError: String?
 
@@ -102,7 +102,7 @@ final class GlobalHotkeyManager: ObservableObject {
     private let hotkeySignature: OSType = 0x4C505354 // LPST
     private let hotkeyID: UInt32 = 1
 
-    init(registerHotkey: Bool = true) {
+    public init(registerHotkey: Bool = true) {
         self.configuration = Self.loadConfiguration(storageKey: storageKey) ?? .default
         if registerHotkey {
             installEventHandlerIfNeeded()

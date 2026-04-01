@@ -38,4 +38,9 @@ open ./dist/LocalPaste.app
 open Package.swift
 ```
 
+## 组件预览
+
+- 可视模块说明与预览入口见：`docs/VISUAL_MODULES.md`
+- 在 Xcode 中打开对应视图文件后，使用 Canvas 查看 `#Preview` 场景
+
 首次运行时建议把应用加入登录项（系统设置 -> 通用 -> 登录项），方便开机自动使用。

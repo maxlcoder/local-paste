@@ -1,0 +1,53 @@
+"action.copy" = "复制";
+"action.delete" = "删除";
+"action.clear" = "清空";
+"action.copy_only" = "仅复制";
+"action.copy_to_app" = "复制到应用";
+
+"content.category_all" = "全部";
+"content.category_mix" = "图片+文本";
+"content.search_placeholder" = "搜索文本或图片";
+"content.items_count" = "%d 条";
+"content.empty_history" = "暂无复制记录";
+"content.no_search_result" = "未找到匹配结果";
+"content.help.import_txt" = "导入TXT";
+"content.help.export_txt" = "导出TXT";
+"content.help.clear" = "清空";
+
+"card.type_text" = "Text";
+"card.type_image" = "Image";
+"card.empty_text" = "（空文本）";
+"card.image_size" = "图片尺寸: %@";
+"card.characters" = "%d characters";
+
+"menu.hotkey" = "快捷键";
+"menu.hotkey.recording" = "请按下组合键...";
+"menu.hotkey.record_hint" = "点击快捷框开始录制，按 Esc 取消";
+"menu.copy_rule" = "复制规则";
+"menu.open_history" = "打开历史窗口";
+"menu.import_txt_history" = "导入TXT历史";
+"menu.export_txt_history" = "导出TXT历史";
+"menu.clear_history" = "清空历史";
+"menu.quit" = "退出 LocalPaste";
+"menu.error.require_modifier" = "请至少包含一个修饰键";
+"menu.error.only_alnum" = "仅支持字母和数字键";
+"menu.status.hotkey_reapplied" = "快捷键与当前一致，已重新应用";
+"menu.status.hotkey_updated" = "快捷键已更新";
+
+"store.panel.export_title" = "导出复制历史";
+"store.panel.import_title" = "导入复制历史";
+
+"clipboard.image_search_label" = "图片 %@";
+"clipboard.image_menu_prefix" = "[图片] %@";
+"clipboard.unknown_size" = "未知尺寸";
+
+"hotkey.error.register_failed" = "快捷键注册失败，请更换组合键";
+"menu.language" = "语言设置";
+"menu.language.system" = "跟随系统";
+"menu.language.zh" = "简体中文";
+"menu.language.en" = "English";
+"menu.popup_position" = "弹窗位置";
+"menu.popup_position.bottom" = "底部";
+"menu.popup_position.top" = "顶部";
+"menu.popup_position.left" = "左侧";
+"menu.popup_position.right" = "右侧";
