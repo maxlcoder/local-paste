@@ -68,9 +68,6 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
-@MainActor
-private var appliedPositionByWindow: [Int: HistoryWindowPosition] = [:]
-
 func currentHistoryWindowPosition() -> HistoryWindowPosition {
     let raw = UserDefaults.standard.string(forKey: historyWindowPositionStorageKey) ?? HistoryWindowPosition.bottom.rawValue
     return HistoryWindowPosition(rawValue: raw) ?? .bottom
@@ -84,13 +81,8 @@ func setHistoryWindowPosition(_ position: HistoryWindowPosition) {
 @MainActor
 func positionWindowAtScreenBottom(_ window: NSWindow) {
     let preferredPosition = currentHistoryWindowPosition()
-    if appliedPositionByWindow[window.windowNumber] == preferredPosition {
-        return
-    }
-
     guard let screen = window.screen ?? NSScreen.main else { return }
 
-    appliedPositionByWindow[window.windowNumber] = preferredPosition
     window.identifier = NSUserInterfaceItemIdentifier("historyWindow")
     window.isMovable = false
     window.isMovableByWindowBackground = false
@@ -105,7 +97,7 @@ func positionWindowAtScreenBottom(_ window: NSWindow) {
     let fullHeight = max(260, visible.height - edgeInset * 2)
 
     let sideWidth: CGFloat = 224
-    let horizontalHeight: CGFloat = 232
+    let horizontalHeight: CGFloat = 280
 
     switch preferredPosition {
     case .bottom:
@@ -156,7 +148,6 @@ func repositionVisibleHistoryWindow() {
     guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) else {
         return
     }
-    appliedPositionByWindow[window.windowNumber] = nil
     positionWindowAtScreenBottom(window)
 }
 
@@ -174,12 +165,14 @@ func activateHistoryWindow() {
     NSApp.activate(ignoringOtherApps: true)
 
     if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) {
+        positionWindowAtScreenBottom(window)
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         return
     }
 
     if let firstWindow = NSApp.windows.first {
+        positionWindowAtScreenBottom(firstWindow)
         firstWindow.makeKeyAndOrderFront(nil)
         firstWindow.orderFrontRegardless()
     }
