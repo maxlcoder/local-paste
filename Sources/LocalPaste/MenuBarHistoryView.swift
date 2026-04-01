@@ -9,6 +9,7 @@ public struct MenuBarHistoryView: View {
 
     @State private var draftConfiguration: HotkeyConfiguration
     @State private var selectedClickAction: RecordClickAction
+    @State private var selectedRetentionPolicy: HistoryRetentionPolicy
     @State private var selectedWindowPosition: HistoryWindowPosition
     @State private var isRecordingShortcut = false
     @State private var inputError: String?
@@ -20,12 +21,29 @@ public struct MenuBarHistoryView: View {
         self.hotkeyManager = hotkeyManager
         _draftConfiguration = State(initialValue: hotkeyManager.configuration)
         _selectedClickAction = State(initialValue: store.clickAction)
+        _selectedRetentionPolicy = State(initialValue: store.retentionPolicy)
         _selectedWindowPosition = State(initialValue: currentHistoryWindowPosition())
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Menu(L10n.tr("menu.language")) {
+            Button {
+                toggleHistoryWindowFromMenu()
+            } label: {
+                Label(L10n.tr("menu.open_history"), systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.18))
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+
+            Menu {
                 ForEach(AppLanguage.allCases) { language in
                     Button {
                         languageManager.setLanguage(language)
@@ -37,13 +55,13 @@ public struct MenuBarHistoryView: View {
                         }
                     }
                 }
+            } label: {
+                Label(L10n.tr("menu.language"), systemImage: "globe")
             }
 
             Divider()
 
-            Text(L10n.tr("menu.hotkey"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            settingHeader(L10n.tr("menu.hotkey"), icon: "keyboard")
 
             Button {
                 startRecordingShortcut()
@@ -61,9 +79,7 @@ public struct MenuBarHistoryView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text(L10n.tr("menu.copy_rule"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            settingHeader(L10n.tr("menu.copy_rule"), icon: "doc.on.clipboard")
 
             Picker(L10n.tr("menu.copy_rule"), selection: $selectedClickAction) {
                 ForEach(RecordClickAction.allCases) { action in
@@ -76,9 +92,7 @@ public struct MenuBarHistoryView: View {
                 store.updateClickAction(value)
             }
 
-            Text(L10n.tr("menu.popup_position"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            settingHeader(L10n.tr("menu.popup_position"), icon: "rectangle.3.group")
 
             Picker(L10n.tr("menu.popup_position"), selection: $selectedWindowPosition) {
                 ForEach(HistoryWindowPosition.allCases) { position in
@@ -90,6 +104,19 @@ public struct MenuBarHistoryView: View {
             .onChange(of: selectedWindowPosition) { value in
                 setHistoryWindowPosition(value)
                 repositionVisibleHistoryWindow()
+            }
+
+            settingHeader(L10n.tr("menu.retention_policy"), icon: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+
+            Picker(L10n.tr("menu.retention_policy"), selection: $selectedRetentionPolicy) {
+                ForEach(HistoryRetentionPolicy.allCases) { policy in
+                    Text(policy.title).tag(policy)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .onChange(of: selectedRetentionPolicy) { value in
+                store.updateRetentionPolicy(value)
             }
 
             if let inputError {
@@ -112,31 +139,37 @@ public struct MenuBarHistoryView: View {
 
             Divider()
 
-            Button(L10n.tr("menu.open_history")) {
-                toggleHistoryWindowFromMenu()
+            HStack(spacing: 8) {
+                Button {
+                    store.importHistoryFromTXT()
+                } label: {
+                    Label(L10n.tr("menu.import_txt_history"), systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Button {
+                    store.exportHistoryAsTXT()
+                } label: {
+                    Label(L10n.tr("menu.export_txt_history"), systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(store.items.isEmpty)
             }
 
-            Divider()
-
-            Button(L10n.tr("menu.import_txt_history")) {
-                store.importHistoryFromTXT()
-            }
-
-            Button(L10n.tr("menu.export_txt_history")) {
-                store.exportHistoryAsTXT()
-            }
-            .disabled(store.items.isEmpty)
-
-            Button(L10n.tr("menu.clear_history")) {
+            Button {
                 store.clearAll()
+            } label: {
+                Label(L10n.tr("menu.clear_history"), systemImage: "trash")
             }
             .disabled(store.items.isEmpty)
 
             Divider()
 
-            Button(L10n.tr("menu.quit")) {
+            Button {
                 stopRecordingShortcut()
                 NSApp.terminate(nil)
+            } label: {
+                Label(L10n.tr("menu.quit"), systemImage: "power")
             }
         }
         .padding(8)
@@ -176,6 +209,7 @@ public struct MenuBarHistoryView: View {
     private func syncFromManager() {
         draftConfiguration = hotkeyManager.configuration
         selectedClickAction = store.clickAction
+        selectedRetentionPolicy = store.retentionPolicy
         selectedWindowPosition = currentHistoryWindowPosition()
         inputError = nil
         statusMessage = nil
@@ -237,6 +271,12 @@ public struct MenuBarHistoryView: View {
             NSEvent.removeMonitor(keyMonitor)
             self.keyMonitor = nil
         }
+    }
+
+    private func settingHeader(_ title: String, icon: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 }
 

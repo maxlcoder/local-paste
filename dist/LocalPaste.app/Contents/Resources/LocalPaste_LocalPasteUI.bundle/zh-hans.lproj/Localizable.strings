@@ -51,3 +51,10 @@
 "menu.popup_position.top" = "顶部";
 "menu.popup_position.left" = "左侧";
 "menu.popup_position.right" = "右侧";
+"menu.retention_policy" = "缓存时间";
+
+"retention.forever" = "永久保留";
+"retention.one_day" = "1 天";
+"retention.three_days" = "3 天";
+"retention.seven_days" = "7 天";
+"retention.thirty_days" = "30 天";

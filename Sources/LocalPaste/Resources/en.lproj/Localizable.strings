@@ -51,3 +51,10 @@
 "menu.popup_position.top" = "Top";
 "menu.popup_position.left" = "Left";
 "menu.popup_position.right" = "Right";
+"menu.retention_policy" = "Retention";
+
+"retention.forever" = "Forever";
+"retention.one_day" = "1 Day";
+"retention.three_days" = "3 Days";
+"retention.seven_days" = "7 Days";
+"retention.thirty_days" = "30 Days";

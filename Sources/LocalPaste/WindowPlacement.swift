@@ -54,12 +54,25 @@ struct WindowAccessor: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         private weak var observedWindow: NSWindow?
+        private var isProgrammaticClose = false
 
         func attach(to window: NSWindow) {
             guard observedWindow !== window else { return }
             observedWindow?.delegate = nil
             observedWindow = window
             window.delegate = self
+        }
+
+        func windowDidResignKey(_ notification: Notification) {
+            guard !isProgrammaticClose else { return }
+            guard let window = observedWindow, window.identifier?.rawValue == "historyWindow" else { return }
+            guard window.isVisible else { return }
+
+            isProgrammaticClose = true
+            hideHistoryWindow()
+            DispatchQueue.main.async {
+                self.isProgrammaticClose = false
+            }
         }
 
         func windowWillClose(_ notification: Notification) {
@@ -134,6 +147,9 @@ private func configureHistoryWindowAppearance(_ window: NSWindow) {
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
     window.title = ""
+    window.collectionBehavior.insert(.moveToActiveSpace)
+    window.collectionBehavior.insert(.fullScreenAuxiliary)
+    window.collectionBehavior.remove(.canJoinAllSpaces)
     window.toolbar = nil
     window.standardWindowButton(.closeButton)?.isHidden = true
     window.standardWindowButton(.miniaturizeButton)?.isHidden = true

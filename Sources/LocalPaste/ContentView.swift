@@ -8,6 +8,10 @@ public struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var query = ""
     @State private var currentWindowPosition: HistoryWindowPosition = currentHistoryWindowPosition()
+    @State private var selectedItemID: UUID?
+    @State private var keyMonitor: Any?
+    @FocusState private var isSearchFieldFocused: Bool
+    @State private var pendingPromoteItemID: UUID?
 
     private var filteredItems: [ClipboardItem] {
         if query.isEmpty {
@@ -72,15 +76,25 @@ public struct ContentView: View {
         })
         .onAppear {
             currentWindowPosition = currentHistoryWindowPosition()
+            applyPendingPromotionIfNeeded()
             hotkeyManager.onTriggered = { [openWindow] in
                 Task { @MainActor in
                     store.capturePotentialPasteTarget()
                     toggleHistoryWindow(openWindow: openWindow)
                 }
             }
+            installDeleteKeyMonitorIfNeeded()
+        }
+        .onDisappear {
+            removeDeleteKeyMonitor()
         }
         .onReceive(NotificationCenter.default.publisher(for: .historyWindowPositionDidChange)) { _ in
             currentWindowPosition = currentHistoryWindowPosition()
+        }
+        .onChange(of: filteredItems.map(\.id)) { ids in
+            if let selectedItemID, !ids.contains(selectedItemID) {
+                self.selectedItemID = nil
+            }
         }
     }
 
@@ -111,23 +125,7 @@ public struct ContentView: View {
 
                     searchField
 
-                    HStack(spacing: 6) {
-                        actionButton("square.and.arrow.down", help: L10n.tr("content.help.import_txt")) {
-                            store.importHistoryFromTXT()
-                        }
-
-                        actionButton("square.and.arrow.up", help: L10n.tr("content.help.export_txt")) {
-                            store.exportHistoryAsTXT()
-                        }
-                        .disabled(store.items.isEmpty)
-
-                        actionButton("trash", help: L10n.tr("content.help.clear")) {
-                            store.clearAll()
-                        }
-                        .disabled(store.items.isEmpty)
-
-                        Spacer(minLength: 0)
-                    }
+                    Spacer(minLength: 0)
                 }
             } else {
                 HStack(spacing: 12) {
@@ -140,15 +138,6 @@ public struct ContentView: View {
                     searchField
 
                     categoryChip(text: "剪贴板", active: true)
-
-                    actionButton("plus", help: L10n.tr("content.help.import_txt")) {
-                        store.importHistoryFromTXT()
-                    }
-
-                    actionButton("ellipsis", help: L10n.tr("content.help.export_txt")) {
-                        store.exportHistoryAsTXT()
-                    }
-                    .disabled(store.items.isEmpty)
 
                     Spacer(minLength: 10)
                 }
@@ -169,6 +158,7 @@ public struct ContentView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(Color.white.opacity(0.90))
+                .focused($isSearchFieldFocused)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -183,11 +173,26 @@ public struct ContentView: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             ForEach(filteredItems) { item in
-                                ClipboardCard(item: item, previewImage: store.image(for: item), isCompact: useVerticalCardsLayout) {
+                                ClipboardCard(
+                                    item: item,
+                                    previewImage: store.image(for: item),
+                                    isCompact: useVerticalCardsLayout,
+                                    isSelected: selectedItemID == item.id
+                                ) {
+                                    selectedItemID = item.id
+                                    isSearchFieldFocused = false
+                                    NSApp.keyWindow?.makeFirstResponder(nil)
+                                } onActivate: {
+                                    selectedItemID = item.id
+                                    isSearchFieldFocused = false
+                                    NSApp.keyWindow?.makeFirstResponder(nil)
                                     store.performPrimaryAction(for: item)
                                     closeHistoryWindow()
                                 } onDelete: {
                                     store.delete(item)
+                                    if selectedItemID == item.id {
+                                        selectedItemID = nil
+                                    }
                                 }
                             }
                         }
@@ -198,11 +203,26 @@ public struct ContentView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 14) {
                             ForEach(filteredItems) { item in
-                                ClipboardCard(item: item, previewImage: store.image(for: item), isCompact: useVerticalCardsLayout) {
+                                ClipboardCard(
+                                    item: item,
+                                    previewImage: store.image(for: item),
+                                    isCompact: useVerticalCardsLayout,
+                                    isSelected: selectedItemID == item.id
+                                ) {
+                                    selectedItemID = item.id
+                                    isSearchFieldFocused = false
+                                    NSApp.keyWindow?.makeFirstResponder(nil)
+                                } onActivate: {
+                                    selectedItemID = item.id
+                                    isSearchFieldFocused = false
+                                    NSApp.keyWindow?.makeFirstResponder(nil)
                                     store.performPrimaryAction(for: item)
                                     closeHistoryWindow()
                                 } onDelete: {
                                     store.delete(item)
+                                    if selectedItemID == item.id {
+                                        selectedItemID = nil
+                                    }
                                 }
                             }
                         }
@@ -261,6 +281,7 @@ public struct ContentView: View {
         }
 
         guard historyWindow.isVisible else {
+            applyPendingPromotionIfNeeded()
             historyWindow.makeKeyAndOrderFront(nil)
             activateHistoryWindow()
             return
@@ -269,6 +290,7 @@ public struct ContentView: View {
         if isHistoryWindowFrontmost(historyWindow) {
             hideHistoryWindow()
         } else {
+            applyPendingPromotionIfNeeded()
             NSApp.activate(ignoringOtherApps: true)
             historyWindow.makeKeyAndOrderFront(nil)
             historyWindow.orderFrontRegardless()
@@ -284,13 +306,61 @@ public struct ContentView: View {
     private func isHistoryWindowFrontmost(_ historyWindow: NSWindow) -> Bool {
         NSApp.isActive && (historyWindow.isKeyWindow || historyWindow.isMainWindow)
     }
+
+    private func installDeleteKeyMonitorIfNeeded() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard NSApp.isActive else { return event }
+            guard let selectedItemID = self.selectedItemID else { return event }
+
+            if let firstResponder = NSApp.keyWindow?.firstResponder, firstResponder is NSTextView {
+                return event
+            }
+
+            guard let selectedItem = self.store.items.first(where: { $0.id == selectedItemID }) else {
+                self.selectedItemID = nil
+                return nil
+            }
+
+            let isDeleteKey = event.keyCode == 51 || event.keyCode == 117
+            if isDeleteKey {
+                self.store.delete(selectedItem)
+                self.selectedItemID = nil
+                return nil
+            }
+
+            let isCommandC = event.modifierFlags.contains(.command) && event.keyCode == 8
+            if isCommandC {
+                self.store.copy(selectedItem, shouldPromote: false)
+                self.pendingPromoteItemID = selectedItem.id
+                return nil
+            }
+
+            return event
+        }
+    }
+
+    private func removeDeleteKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
+    }
+
+    private func applyPendingPromotionIfNeeded() {
+        guard let pendingPromoteItemID else { return }
+        store.promoteItemToFront(itemID: pendingPromoteItemID)
+        self.pendingPromoteItemID = nil
+    }
 }
 
 private struct ClipboardCard: View {
     let item: ClipboardItem
     let previewImage: NSImage?
     let isCompact: Bool
-    let onCopy: () -> Void
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onActivate: () -> Void
     let onDelete: () -> Void
 
     private var cardWidth: CGFloat {
@@ -369,13 +439,17 @@ private struct ClipboardCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(red: 0.10, green: 0.60, blue: 0.86), lineWidth: 1.8)
+                .stroke(
+                    isSelected ? Color.white.opacity(0.92) : Color(red: 0.10, green: 0.60, blue: 0.86),
+                    lineWidth: isSelected ? 2.6 : 1.8
+                )
         )
         .shadow(color: Color(red: 0.10, green: 0.60, blue: 0.86).opacity(0.24), radius: 12, x: 0, y: 5)
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .onTapGesture(perform: onCopy)
+        .onTapGesture(count: 2, perform: onActivate)
+        .onTapGesture(perform: onSelect)
         .contextMenu {
-            Button(L10n.tr("action.copy")) { onCopy() }
+            Button(L10n.tr("action.copy")) { onActivate() }
             Button(L10n.tr("action.delete")) { onDelete() }
         }
     }
@@ -397,7 +471,9 @@ private struct ClipboardCardPreviewScene: View {
             item: item,
             previewImage: nil,
             isCompact: isCompact,
-            onCopy: {},
+            isSelected: false,
+            onSelect: {},
+            onActivate: {},
             onDelete: {}
         )
         .padding(20)

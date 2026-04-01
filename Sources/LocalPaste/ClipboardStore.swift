@@ -20,10 +20,51 @@ enum RecordClickAction: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
+    case forever
+    case oneDay
+    case threeDays
+    case sevenDays
+    case thirtyDays
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .forever:
+            return L10n.tr("retention.forever")
+        case .oneDay:
+            return L10n.tr("retention.one_day")
+        case .threeDays:
+            return L10n.tr("retention.three_days")
+        case .sevenDays:
+            return L10n.tr("retention.seven_days")
+        case .thirtyDays:
+            return L10n.tr("retention.thirty_days")
+        }
+    }
+
+    func cutoffDate(relativeTo now: Date) -> Date? {
+        switch self {
+        case .forever:
+            return nil
+        case .oneDay:
+            return now.addingTimeInterval(-86_400)
+        case .threeDays:
+            return now.addingTimeInterval(-3 * 86_400)
+        case .sevenDays:
+            return now.addingTimeInterval(-7 * 86_400)
+        case .thirtyDays:
+            return now.addingTimeInterval(-30 * 86_400)
+        }
+    }
+}
+
 @MainActor
 public final class ClipboardStore: ObservableObject {
     @Published private(set) var items: [ClipboardItem] = []
     @Published private(set) var clickAction: RecordClickAction
+    @Published private(set) var retentionPolicy: HistoryRetentionPolicy
 
     private let pasteboard = NSPasteboard.general
     private var timer: Timer?
@@ -35,10 +76,12 @@ public final class ClipboardStore: ObservableObject {
     private let pollInterval: TimeInterval = 0.7
     private let exportSeparator = "\n\n-----LOCALPASTE-ITEM-----\n\n"
     private let clickActionStorageKey = "LocalPaste.RecordClickAction"
+    private let retentionPolicyStorageKey = "LocalPaste.HistoryRetentionPolicy"
 
     public init(shouldStartMonitoring: Bool = true) {
         self.lastChangeCount = pasteboard.changeCount
         self.clickAction = Self.loadClickAction(key: clickActionStorageKey) ?? .copyOnly
+        self.retentionPolicy = Self.loadRetentionPolicy(key: retentionPolicyStorageKey) ?? .forever
         if shouldStartMonitoring {
             loadHistory()
             captureCurrentFrontmostAppIfNeeded()
@@ -52,6 +95,7 @@ public final class ClipboardStore: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.captureCurrentFrontmostAppIfNeeded()
+                self?.purgeExpiredItemsIfNeeded()
                 self?.pollPasteboard()
             }
         }
@@ -60,14 +104,16 @@ public final class ClipboardStore: ObservableObject {
         }
     }
 
-    func copy(_ item: ClipboardItem) {
+    func copy(_ item: ClipboardItem, shouldPromote: Bool = true) {
         switch item.kind {
         case .text:
             guard let content = item.text else { return }
             pasteboard.clearContents()
             pasteboard.setString(content, forType: .string)
             lastChangeCount = pasteboard.changeCount
-            addText(content)
+            if shouldPromote {
+                addText(content)
+            }
 
         case .image:
             guard let image = image(for: item) else {
@@ -77,6 +123,20 @@ public final class ClipboardStore: ObservableObject {
             pasteboard.clearContents()
             pasteboard.writeObjects([image])
             lastChangeCount = pasteboard.changeCount
+            if shouldPromote {
+                addImage(image)
+            }
+        }
+    }
+
+    func promoteItemToFront(itemID: UUID) {
+        guard let item = items.first(where: { $0.id == itemID }) else { return }
+        switch item.kind {
+        case .text:
+            guard let text = item.text else { return }
+            addText(text)
+        case .image:
+            guard let image = image(for: item) else { return }
             addImage(image)
         }
     }
@@ -105,6 +165,12 @@ public final class ClipboardStore: ObservableObject {
     func updateClickAction(_ action: RecordClickAction) {
         clickAction = action
         UserDefaults.standard.set(action.rawValue, forKey: clickActionStorageKey)
+    }
+
+    func updateRetentionPolicy(_ policy: HistoryRetentionPolicy) {
+        retentionPolicy = policy
+        UserDefaults.standard.set(policy.rawValue, forKey: retentionPolicyStorageKey)
+        purgeExpiredItemsIfNeeded()
     }
 
     func capturePotentialPasteTarget() {
@@ -200,6 +266,8 @@ public final class ClipboardStore: ObservableObject {
     }
 
     private func addText(_ content: String) {
+        purgeExpiredItemsIfNeeded()
+
         if let existingIndex = items.firstIndex(where: { $0.kind == .text && $0.text == content }) {
             items.remove(at: existingIndex)
         }
@@ -210,6 +278,8 @@ public final class ClipboardStore: ObservableObject {
     }
 
     private func addImage(_ image: NSImage) {
+        purgeExpiredItemsIfNeeded()
+
         guard let pngData = image.pngData else { return }
 
         let hash = sha256Hex(pngData)
@@ -325,6 +395,7 @@ public final class ClipboardStore: ObservableObject {
                 }
             }
 
+            purgeExpiredItemsIfNeeded(saveAfterPurge: false)
             trimToMaxItems()
         } catch {
             items = []
@@ -474,6 +545,27 @@ public final class ClipboardStore: ObservableObject {
     private static func loadClickAction(key: String) -> RecordClickAction? {
         guard let rawValue = UserDefaults.standard.string(forKey: key) else { return nil }
         return RecordClickAction(rawValue: rawValue)
+    }
+
+    private static func loadRetentionPolicy(key: String) -> HistoryRetentionPolicy? {
+        guard let rawValue = UserDefaults.standard.string(forKey: key) else { return nil }
+        return HistoryRetentionPolicy(rawValue: rawValue)
+    }
+
+    private func purgeExpiredItemsIfNeeded(saveAfterPurge: Bool = true) {
+        guard let cutoffDate = retentionPolicy.cutoffDate(relativeTo: Date()) else { return }
+
+        let expiredItems = items.filter { $0.copiedAt < cutoffDate }
+        guard !expiredItems.isEmpty else { return }
+
+        for item in expiredItems {
+            removeImageAssetIfNeeded(for: item)
+        }
+
+        items.removeAll { $0.copiedAt < cutoffDate }
+        if saveAfterPurge {
+            saveHistory()
+        }
     }
 
     private func sha256Hex(_ data: Data) -> String {
