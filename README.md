@@ -32,6 +32,17 @@ open ./dist/LocalPaste.app
 
 推荐从 `dist/LocalPaste.app` 启动，这样有完整 `Bundle Identifier`，系统集成更稳定。
 
+## 打包 DMG
+
+```bash
+cd /Users/woody/workspace/local-paste
+./scripts/package_dmg.sh
+```
+
+打包完成后输出文件：
+
+- `dist/LocalPaste.dmg`
+
 ## 在 Xcode 打开
 
 ```bash
