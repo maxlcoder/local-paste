@@ -224,13 +224,8 @@ public struct ContentView: View {
                 }
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 8)
-        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(alignment: .center) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-        }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 0)
     }
 
     private func categoryChip(text: String, active: Bool) -> some View {
