@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="LocalPaste"
 BUNDLE_ID="com.localpaste.app"
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 APP_DIR="$ROOT_DIR/dist/${APP_NAME}.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -69,5 +70,13 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 PLIST
 
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
+
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    codesign --force --deep --sign - "$APP_DIR"
+else
+    codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_DIR"
+fi
+
+codesign --verify --deep --strict "$APP_DIR"
 
 echo "Built app bundle: $APP_DIR"

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="LocalPaste"
+DMG_SIGN_IDENTITY="${DMG_SIGN_IDENTITY:-}"
 DIST_DIR="$ROOT_DIR/dist"
 APP_PATH="$DIST_DIR/${APP_NAME}.app"
 DMG_NAME="${APP_NAME}.dmg"
@@ -43,6 +44,10 @@ hdiutil convert \
     -format UDZO \
     -imagekey zlib-level=9 \
     -o "$DMG_PATH" >/dev/null
+
+if [ -n "$DMG_SIGN_IDENTITY" ]; then
+    codesign --force --sign "$DMG_SIGN_IDENTITY" "$DMG_PATH"
+fi
 
 rm -rf "$WORK_DIR"
 

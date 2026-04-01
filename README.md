@@ -43,6 +43,33 @@ cd /Users/woody/workspace/local-paste
 
 - `dist/LocalPaste.dmg`
 
+### 出现“文件已损坏”时
+
+这是 macOS Gatekeeper 对未公证包的常见拦截提示。
+
+本机测试可先执行：
+
+```bash
+xattr -dr com.apple.quarantine /Users/woody/workspace/local-paste/dist/LocalPaste.app
+xattr -dr com.apple.quarantine /Users/woody/workspace/local-paste/dist/LocalPaste.dmg
+```
+
+### 对外分发建议（Developer ID）
+
+打包 App 时指定签名证书：
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/package_dmg.sh
+```
+
+可选：给 DMG 也签名：
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+DMG_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+./scripts/package_dmg.sh
+```
+
 ## 在 Xcode 打开
 
 ```bash
