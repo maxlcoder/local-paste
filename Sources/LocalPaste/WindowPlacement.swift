@@ -94,7 +94,7 @@ func setHistoryWindowPosition(_ position: HistoryWindowPosition) {
 @MainActor
 func positionWindowAtScreenBottom(_ window: NSWindow) {
     let preferredPosition = currentHistoryWindowPosition()
-    guard let screen = window.screen ?? NSScreen.main else { return }
+    guard let screen = popupTargetScreen(for: window) else { return }
 
     window.identifier = NSUserInterfaceItemIdentifier("historyWindow")
     window.isMovable = false
@@ -139,6 +139,15 @@ func positionWindowAtScreenBottom(_ window: NSWindow) {
     frame.origin.y = max(visible.minY + edgeInset, min(frame.origin.y, visible.maxY - frame.height - edgeInset))
 
     window.setFrame(frame, display: true, animate: false)
+}
+
+@MainActor
+private func popupTargetScreen(for window: NSWindow) -> NSScreen? {
+    let mouseLocation = NSEvent.mouseLocation
+    if let mouseScreen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) {
+        return mouseScreen
+    }
+    return window.screen ?? NSScreen.main
 }
 
 @MainActor
