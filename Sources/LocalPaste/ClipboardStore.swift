@@ -72,7 +72,6 @@ public final class ClipboardStore: ObservableObject {
     private var lastExternalAppPID: pid_t?
     private var lastExternalBundleID: String?
 
-    private let maxItems = 200
     private let pollInterval: TimeInterval = 0.7
     private let exportSeparator = "\n\n-----LOCALPASTE-ITEM-----\n\n"
     private let clickActionStorageKey = "LocalPaste.RecordClickAction"
@@ -273,7 +272,6 @@ public final class ClipboardStore: ObservableObject {
         }
 
         items.insert(ClipboardItem(text: content), at: 0)
-        trimToMaxItems()
         saveHistory()
     }
 
@@ -300,7 +298,6 @@ public final class ClipboardStore: ObservableObject {
                     ),
                     at: 0
                 )
-                trimToMaxItems()
                 saveHistory()
                 return
             }
@@ -322,20 +319,10 @@ public final class ClipboardStore: ObservableObject {
                 at: 0
             )
 
-            trimToMaxItems()
             saveHistory()
         } catch {
             NSSound.beep()
         }
-    }
-
-    private func trimToMaxItems() {
-        guard items.count > maxItems else { return }
-        let overflow = items.suffix(from: maxItems)
-        for item in overflow {
-            removeImageAssetIfNeeded(for: item)
-        }
-        items = Array(items.prefix(maxItems))
     }
 
     private func removeImageAssetIfNeeded(for item: ClipboardItem) {
@@ -396,7 +383,6 @@ public final class ClipboardStore: ObservableObject {
             }
 
             purgeExpiredItemsIfNeeded(saveAfterPurge: false)
-            trimToMaxItems()
         } catch {
             items = []
         }
