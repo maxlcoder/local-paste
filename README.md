@@ -43,6 +43,15 @@ cd /Users/woody/workspace/local-paste
 
 - `dist/LocalPaste.dmg`
 
+默认会构建通用二进制（`arm64 + x86_64`），可同时支持 Apple 芯片和 Intel Mac。
+
+如需仅构建单架构：
+
+```bash
+BUILD_ARCHS="arm64" ./scripts/package_dmg.sh
+BUILD_ARCHS="x86_64" ./scripts/package_dmg.sh
+```
+
 ### 出现“文件已损坏”时
 
 这是 macOS Gatekeeper 对未公证包的常见拦截提示。

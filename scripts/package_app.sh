@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="LocalPaste"
 BUNDLE_ID="com.localpaste.app"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+BUILD_ARCHS="${BUILD_ARCHS:-arm64 x86_64}"
 APP_DIR="$ROOT_DIR/dist/${APP_NAME}.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -12,21 +13,54 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 ICON_FILE="$ROOT_DIR/assets/LocalPaste.icns"
 
 cd "$ROOT_DIR"
-swift build -c release
+
+read -r -a ARCH_LIST <<< "$BUILD_ARCHS"
+if [ "${#ARCH_LIST[@]}" -eq 0 ]; then
+    echo "No build architectures provided."
+    exit 1
+fi
+
+for arch in "${ARCH_LIST[@]}"; do
+    swift build -c release --arch "$arch"
+done
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
-cp "$ROOT_DIR/.build/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+BINARIES=()
+for arch in "${ARCH_LIST[@]}"; do
+    arch_binary="$ROOT_DIR/.build/${arch}-apple-macosx/release/$APP_NAME"
+    if [ ! -f "$arch_binary" ]; then
+        arch_binary="$ROOT_DIR/.build/release/$APP_NAME"
+    fi
+    if [ ! -f "$arch_binary" ]; then
+        echo "Missing build output for $arch: $arch_binary"
+        exit 1
+    fi
+    BINARIES+=("$arch_binary")
+done
+
+if [ "${#BINARIES[@]}" -eq 1 ]; then
+    cp "${BINARIES[0]}" "$MACOS_DIR/$APP_NAME"
+else
+    lipo -create "${BINARIES[@]}" -output "$MACOS_DIR/$APP_NAME"
+fi
+
 chmod +x "$MACOS_DIR/$APP_NAME"
 
 if [ -f "$ICON_FILE" ]; then
     cp "$ICON_FILE" "$RESOURCES_DIR/LocalPaste.icns"
 fi
 
+PRIMARY_ARCH="${ARCH_LIST[0]}"
+PRIMARY_RELEASE_DIR="$ROOT_DIR/.build/${PRIMARY_ARCH}-apple-macosx/release"
+if [ ! -d "$PRIMARY_RELEASE_DIR" ]; then
+    PRIMARY_RELEASE_DIR="$ROOT_DIR/.build/release"
+fi
+
 while IFS= read -r bundle_path; do
     cp -R "$bundle_path" "$RESOURCES_DIR/"
-done < <(find "$ROOT_DIR/.build" -path "*/release/*.bundle" -type d)
+done < <(find "$PRIMARY_RELEASE_DIR" -maxdepth 1 -name "*.bundle" -type d)
 
 cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
