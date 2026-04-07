@@ -3,6 +3,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let historyWindowPositionDidChange = Notification.Name("LocalPaste.HistoryWindowPositionDidChange")
+    static let historyWindowWillShow = Notification.Name("LocalPaste.HistoryWindowWillShow")
 }
 
 enum HistoryWindowPosition: String, CaseIterable, Identifiable {
@@ -188,6 +189,7 @@ func hideHistoryWindow() {
 func activateHistoryWindow() {
     hideAppFromDock()
     NSApp.activate(ignoringOtherApps: true)
+    NotificationCenter.default.post(name: .historyWindowWillShow, object: nil)
 
     if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) {
         positionWindowAtScreenBottom(window)

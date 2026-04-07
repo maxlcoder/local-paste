@@ -12,6 +12,7 @@ public struct ContentView: View {
     @State private var keyMonitor: Any?
     @FocusState private var isSearchFieldFocused: Bool
     @State private var pendingPromoteItemID: UUID?
+    @State private var scrollToLatestRequestID: Int = 0
 
     private var filteredItems: [ClipboardItem] {
         if query.isEmpty {
@@ -90,6 +91,9 @@ public struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .historyWindowPositionDidChange)) { _ in
             currentWindowPosition = currentHistoryWindowPosition()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .historyWindowWillShow)) { _ in
+            scrollToLatestRequestID += 1
         }
         .onChange(of: filteredItems.map(\.id)) { ids in
             if let selectedItemID, !ids.contains(selectedItemID) {
@@ -170,60 +174,70 @@ public struct ContentView: View {
         Group {
             Group {
                 if useVerticalCardsLayout {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 14) {
-                            ForEach(filteredItems) { item in
-                                ClipboardCard(
-                                    item: item,
-                                    previewImage: store.image(for: item),
-                                    isCompact: useVerticalCardsLayout,
-                                    isSelected: selectedItemID == item.id
-                                ) {
-                                    selectedItemID = item.id
-                                    isSearchFieldFocused = false
-                                    NSApp.keyWindow?.makeFirstResponder(nil)
-                                } onActivate: {
-                                    selectedItemID = item.id
-                                    isSearchFieldFocused = false
-                                    NSApp.keyWindow?.makeFirstResponder(nil)
-                                    store.performPrimaryAction(for: item)
-                                    closeHistoryWindow()
-                                } onDelete: {
-                                    store.delete(item)
-                                    if selectedItemID == item.id {
-                                        selectedItemID = nil
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(alignment: .leading, spacing: 14) {
+                                ForEach(filteredItems) { item in
+                                    ClipboardCard(
+                                        item: item,
+                                        previewImage: store.image(for: item),
+                                        isCompact: useVerticalCardsLayout,
+                                        isSelected: selectedItemID == item.id
+                                    ) {
+                                        selectedItemID = item.id
+                                        isSearchFieldFocused = false
+                                        NSApp.keyWindow?.makeFirstResponder(nil)
+                                    } onActivate: {
+                                        selectedItemID = item.id
+                                        isSearchFieldFocused = false
+                                        NSApp.keyWindow?.makeFirstResponder(nil)
+                                        store.performPrimaryAction(for: item)
+                                        closeHistoryWindow()
+                                    } onDelete: {
+                                        store.delete(item)
+                                        if selectedItemID == item.id {
+                                            selectedItemID = nil
+                                        }
                                     }
                                 }
+                            }
+                            .onChange(of: scrollToLatestRequestID) { _ in
+                                scrollToLatest(using: proxy, isVertical: true)
                             }
                         }
                         .padding(.vertical, 12)
                         .padding(.trailing, 12)
                     }
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 14) {
-                            ForEach(filteredItems) { item in
-                                ClipboardCard(
-                                    item: item,
-                                    previewImage: store.image(for: item),
-                                    isCompact: useVerticalCardsLayout,
-                                    isSelected: selectedItemID == item.id
-                                ) {
-                                    selectedItemID = item.id
-                                    isSearchFieldFocused = false
-                                    NSApp.keyWindow?.makeFirstResponder(nil)
-                                } onActivate: {
-                                    selectedItemID = item.id
-                                    isSearchFieldFocused = false
-                                    NSApp.keyWindow?.makeFirstResponder(nil)
-                                    store.performPrimaryAction(for: item)
-                                    closeHistoryWindow()
-                                } onDelete: {
-                                    store.delete(item)
-                                    if selectedItemID == item.id {
-                                        selectedItemID = nil
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 14) {
+                                ForEach(filteredItems) { item in
+                                    ClipboardCard(
+                                        item: item,
+                                        previewImage: store.image(for: item),
+                                        isCompact: useVerticalCardsLayout,
+                                        isSelected: selectedItemID == item.id
+                                    ) {
+                                        selectedItemID = item.id
+                                        isSearchFieldFocused = false
+                                        NSApp.keyWindow?.makeFirstResponder(nil)
+                                    } onActivate: {
+                                        selectedItemID = item.id
+                                        isSearchFieldFocused = false
+                                        NSApp.keyWindow?.makeFirstResponder(nil)
+                                        store.performPrimaryAction(for: item)
+                                        closeHistoryWindow()
+                                    } onDelete: {
+                                        store.delete(item)
+                                        if selectedItemID == item.id {
+                                            selectedItemID = nil
+                                        }
                                     }
                                 }
+                            }
+                            .onChange(of: scrollToLatestRequestID) { _ in
+                                scrollToLatest(using: proxy, isVertical: false)
                             }
                         }
                         .padding(.vertical, 12)
@@ -351,6 +365,13 @@ public struct ContentView: View {
         guard let pendingPromoteItemID else { return }
         store.promoteItemToFront(itemID: pendingPromoteItemID)
         self.pendingPromoteItemID = nil
+    }
+
+    private func scrollToLatest(using proxy: ScrollViewProxy, isVertical: Bool) {
+        guard let latestID = filteredItems.first?.id else { return }
+        withAnimation(.easeOut(duration: 0.16)) {
+            proxy.scrollTo(latestID, anchor: isVertical ? .top : .leading)
+        }
     }
 }
 
