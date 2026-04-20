@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="LocalPaste"
 DMG_SIGN_IDENTITY="${DMG_SIGN_IDENTITY:-}"
+NOTARIZE="${NOTARIZE:-0}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 DIST_DIR="$ROOT_DIR/dist"
 APP_PATH="$DIST_DIR/${APP_NAME}.app"
 DMG_NAME="${APP_NAME}.dmg"
@@ -47,6 +49,18 @@ hdiutil convert \
 
 if [ -n "$DMG_SIGN_IDENTITY" ]; then
     codesign --force --sign "$DMG_SIGN_IDENTITY" "$DMG_PATH"
+fi
+
+if [ "$NOTARIZE" = "1" ]; then
+    if [ -z "$NOTARY_PROFILE" ]; then
+        echo "NOTARY_PROFILE is required when NOTARIZE=1"
+        echo "Create one with: xcrun notarytool store-credentials <profile-name> ..."
+        exit 1
+    fi
+
+    xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun stapler staple "$APP_PATH"
+    xcrun stapler staple "$DMG_PATH"
 fi
 
 rm -rf "$WORK_DIR"

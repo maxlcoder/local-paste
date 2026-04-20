@@ -79,6 +79,36 @@ DMG_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 ./scripts/package_dmg.sh
 ```
 
+### 其他 Mac 可直接安装（推荐发布流程）
+
+要避免“已损坏/无法验证开发者”，需要 **Developer ID 签名 + Apple 公证（Notarization）**。
+
+先在本机保存 notary 凭据（仅首次）：
+
+```bash
+xcrun notarytool store-credentials "localpaste-notary" \
+  --apple-id "<your-apple-id>" \
+  --team-id "<your-team-id>" \
+  --password "<app-specific-password>"
+```
+
+然后执行发布打包：
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+DMG_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARIZE=1 \
+NOTARY_PROFILE="localpaste-notary" \
+./scripts/package_dmg.sh
+```
+
+发布前可验证（可选）：
+
+```bash
+spctl -a -vvv dist/LocalPaste.app
+spctl -a -vvv -t open dist/LocalPaste.dmg
+```
+
 ## 在 Xcode 打开
 
 ```bash

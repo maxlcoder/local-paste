@@ -77,12 +77,9 @@ public struct ContentView: View {
         })
         .onAppear {
             currentWindowPosition = currentHistoryWindowPosition()
-            applyPendingPromotionIfNeeded()
             hotkeyManager.onTriggered = { [openWindow] in
-                Task { @MainActor in
-                    store.capturePotentialPasteTarget()
-                    toggleHistoryWindow(openWindow: openWindow)
-                }
+                store.capturePotentialPasteTarget()
+                toggleHistoryWindow(openWindow: openWindow)
             }
             installDeleteKeyMonitorIfNeeded()
         }
@@ -93,7 +90,10 @@ public struct ContentView: View {
             currentWindowPosition = currentHistoryWindowPosition()
         }
         .onReceive(NotificationCenter.default.publisher(for: .historyWindowWillShow)) { _ in
-            scrollToLatestRequestID += 1
+            handleHistoryWindowWillShow()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .historyWindowDidHide)) { _ in
+            handleHistoryWindowDidHide()
         }
         .onChange(of: filteredItems.map(\.id)) { ids in
             if let selectedItemID, !ids.contains(selectedItemID) {
@@ -291,23 +291,21 @@ public struct ContentView: View {
         guard let historyWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "historyWindow" }) else {
             openWindow(id: "history")
             activateHistoryWindow()
+            DispatchQueue.main.async {
+                activateHistoryWindow()
+            }
             return
         }
 
         guard historyWindow.isVisible else {
-            applyPendingPromotionIfNeeded()
-            historyWindow.makeKeyAndOrderFront(nil)
             activateHistoryWindow()
             return
         }
 
-        if isHistoryWindowFrontmost(historyWindow) {
+        if NSApp.isActive {
             hideHistoryWindow()
         } else {
-            applyPendingPromotionIfNeeded()
-            NSApp.activate(ignoringOtherApps: true)
-            historyWindow.makeKeyAndOrderFront(nil)
-            historyWindow.orderFrontRegardless()
+            activateHistoryWindow()
         }
     }
 
@@ -367,11 +365,24 @@ public struct ContentView: View {
         self.pendingPromoteItemID = nil
     }
 
+    private func handleHistoryWindowWillShow() {
+        selectedItemID = store.items.first?.id
+        scrollToLatestRequestID += 1
+    }
+
+    private func handleHistoryWindowDidHide() {
+        DispatchQueue.main.async {
+            self.applyPendingPromotionIfNeeded()
+            self.query = ""
+            self.isSearchFieldFocused = false
+            NSApp.keyWindow?.makeFirstResponder(nil)
+            self.selectedItemID = self.store.items.first?.id
+        }
+    }
+
     private func scrollToLatest(using proxy: ScrollViewProxy, isVertical: Bool) {
         guard let latestID = filteredItems.first?.id else { return }
-        withAnimation(.easeOut(duration: 0.16)) {
-            proxy.scrollTo(latestID, anchor: isVertical ? .top : .leading)
-        }
+        proxy.scrollTo(latestID, anchor: isVertical ? .top : .leading)
     }
 }
 

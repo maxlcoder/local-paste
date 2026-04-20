@@ -106,6 +106,7 @@ PLIST
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 if [ "$SIGN_IDENTITY" = "-" ]; then
+    echo "Warning: ad-hoc signing is for local testing only; other Macs may block this app."
     codesign --force --deep --sign - "$APP_DIR"
 else
     codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_DIR"
