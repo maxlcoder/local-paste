@@ -52,6 +52,18 @@ BUILD_ARCHS="arm64" ./scripts/package_dmg.sh
 BUILD_ARCHS="x86_64" ./scripts/package_dmg.sh
 ```
 
+### 无 Developer ID（内部测试分发）
+
+```bash
+cd /Users/woody/workspace/local-paste
+./scripts/package_dmg_unsigned.sh
+```
+
+产物：
+
+- `dist/LocalPaste.dmg`
+- `dist/UNSIGNED_INSTALL.md`（给测试同事的安装说明）
+
 ### 出现“文件已损坏”时
 
 这是 macOS Gatekeeper 对未公证包的常见拦截提示。
